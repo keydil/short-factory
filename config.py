@@ -16,7 +16,7 @@ LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY")
 # ---- Content settings ----
 # "en" = English (bigger global reach, better ad RPM, matches the reference channels)
 # "id" = Bahasa Indonesia
-LANGUAGE = "en"
+LANGUAGE = "id"
 
 # "top3"  -> listicle format, ala @3intheworld ("3 strangest things about X")
 # "story" -> single fact told as a short story, ala @NarratoChannel
@@ -25,10 +25,9 @@ CONTENT_FORMAT = "story"
 # Be specific here — this becomes part of the AI prompt and shapes everything.
 NICHE_DESCRIPTION = "bizarre and little-known facts about history, science, and the natural world"
 
-# Gemini model. The "-latest" alias auto-points to Google's current flash model,
-# so this won't silently break when a specific snapshot gets retired.
+# Gemini model. Read from .env if present, otherwise defaults to gemini-2.5-flash.
 # Check https://ai.google.dev/gemini-api/docs/models if this ever errors out.
-GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # ---- Video settings ----
 VIDEO_WIDTH = 1080
