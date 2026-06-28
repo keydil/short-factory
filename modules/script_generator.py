@@ -8,10 +8,13 @@ pipeline cut visuals in sync with the voice, instead of one static image for 45s
 """
 import json
 import time
-import google.generativeai as genai
+from google import genai
 import config
 
-genai.configure(api_key=config.GEMINI_API_KEY)
+# New SDK uses a Client object instead of genai.configure() + GenerativeModel.
+# pip install google-genai (the old google-generativeai package is deprecated
+# and no longer receiving updates/bug fixes as of mid-2026).
+client = genai.Client(api_key=config.GEMINI_API_KEY)
 
 
 PROMPT_TEMPLATE = """You are a scriptwriter for a viral, faceless YouTube Shorts channel about {niche}.
@@ -22,7 +25,7 @@ Write ONE short video script in {language_name}. Requirements:
 - Hook in the very first sentence: a question or surprising claim that stops the scroll.
 - Total spoken length: roughly {duration} seconds (about {word_count} words at natural speaking pace).
 - Punchy, simple sentences, no filler words, no markdown.
-- End with a short, natural call-to-action to follow/subscribe for more.
+- {outro_instruction}
 - Split the narration into short segments (1 sentence each) for pacing.
 - For each segment, give 2-3 KEYWORDS (in English, even if the script itself is in
   another language) describing a SPECIFIC visual moment or action that matches it —
@@ -33,8 +36,9 @@ Write ONE short video script in {language_name}. Requirements:
 - For each segment also give a "label" field — a short (1-4 word) ALL-CAPS-friendly
   on-screen text overlay for that beat: for the hook/intro segment, a punchy short
   version of the video title; for each ranked item segment, just that item's name;
-  for a mid-video call-to-action segment, use "SUBSCRIBE" or "LIKE"; otherwise null
-  if no distinct on-screen text fits that beat.
+  for a mid-video call-to-action segment, use EXACTLY "LIKE" or EXACTLY "SUBSCRIBE"
+  (pick ONE based on whichever action that line emphasizes more — never combine
+  them into one label); otherwise null if no distinct on-screen text fits that beat.
 
 Return STRICT JSON only — no markdown fences, no commentary — in exactly this shape:
 {{
@@ -78,6 +82,23 @@ RANK_INSTRUCTIONS = {
     ),
 }
 
+OUTRO_INSTRUCTIONS = {
+    "top3": (
+        "For the very last segment: do NOT repeat 'like and subscribe' again — that was "
+        "already covered by the mid-video CTA segment, and saying it twice in one short "
+        "video reads as robotic repetition. Instead close with a short opinion-bait line "
+        "tied to the specific items in THIS video, inviting a comment, e.g. 'Which one "
+        "would you actually try?' or 'Comment which one surprised you most.'"
+    ),
+    "story": (
+        "For the very last segment: do NOT repeat 'like and subscribe' again — that was "
+        "already covered by the earlier CTA segment, and saying it twice in one short video "
+        "reads as robotic repetition. Instead close with a short line inviting a reaction "
+        "in the comments related to the fact, e.g. 'Would you have guessed this?' or "
+        "'Comment if you already knew this.'"
+    ),
+}
+
 LANGUAGE_NAMES = {"en": "English", "id": "Bahasa Indonesia"}
 
 
@@ -89,6 +110,7 @@ def generate_script(topic_hint: str = None) -> dict:
         niche=config.NICHE_DESCRIPTION,
         format_instruction=FORMAT_INSTRUCTIONS[config.CONTENT_FORMAT],
         rank_instruction=RANK_INSTRUCTIONS[config.CONTENT_FORMAT],
+        outro_instruction=OUTRO_INSTRUCTIONS[config.CONTENT_FORMAT],
         language_name=LANGUAGE_NAMES[config.LANGUAGE],
         duration=config.TARGET_DURATION_SECONDS,
         word_count=word_count,
@@ -96,18 +118,21 @@ def generate_script(topic_hint: str = None) -> dict:
     if topic_hint:
         prompt += f"\nSpecific topic to use: {topic_hint}\n"
 
-    model = genai.GenerativeModel(config.GEMINI_MODEL)
-
-    max_retries = 3
+    max_retries = 4
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=config.GEMINI_MODEL,
+                contents=prompt,
+            )
             break
         except Exception as e:
-            if "429" in str(e) or "ResourceExhausted" in str(e):
+            is_rate_limit = getattr(e, "code", None) == 429 or "429" in str(e)
+            if is_rate_limit:
                 if attempt < max_retries - 1:
-                    print(f"\n     [!] API limit reached. Waiting 20 seconds before retry (Attempt {attempt+1}/{max_retries})...")
-                    time.sleep(20)
+                    wait_s = 25
+                    print(f"\n     [!] API limit reached. Waiting {wait_s}s before retry (Attempt {attempt+1}/{max_retries})...")
+                    time.sleep(wait_s)
                 else:
                     raise e
             else:

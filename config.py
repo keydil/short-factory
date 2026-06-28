@@ -16,7 +16,7 @@ LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY")
 # ---- Content settings ----
 # "en" = English (bigger global reach, better ad RPM, matches the reference channels)
 # "id" = Bahasa Indonesia
-LANGUAGE = "id"
+LANGUAGE = "en"
 
 # "top3"  -> listicle format, ala @3intheworld ("3 strangest things about X")
 # "story" -> single fact told as a short story, ala @NarratoChannel
@@ -25,9 +25,12 @@ CONTENT_FORMAT = "story"
 # Be specific here — this becomes part of the AI prompt and shapes everything.
 NICHE_DESCRIPTION = "bizarre and little-known facts about history, science, and the natural world"
 
-# Gemini model. Read from .env if present, otherwise defaults to gemini-2.5-flash.
+# Gemini model. The "-latest" alias auto-points to Google's current flash model,
+# so this won't silently break when a specific snapshot gets retired.
 # Check https://ai.google.dev/gemini-api/docs/models if this ever errors out.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Override via GEMINI_MODEL in your .env file if you want to pin a specific model
+# (e.g. to control cost/quota — "-latest" can silently jump to a pricier model).
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 
 # ---- Video settings ----
 VIDEO_WIDTH = 1080
@@ -36,6 +39,8 @@ FPS = 30
 # Suggested pacing differs a lot by format. Based on an actual @3intheworld
 # video transcript ("3 dangerous toys in the world"), a 3-item top3 countdown
 # runs just ~26 seconds total — much punchier than a single-story format.
+# Edit these per-format defaults directly, or override TARGET_DURATION_SECONDS
+# below if you want to force a specific value regardless of format.
 DURATION_BY_FORMAT = {"top3": 28, "story": 45}
 TARGET_DURATION_SECONDS = DURATION_BY_FORMAT[CONTENT_FORMAT]
 
@@ -59,6 +64,11 @@ TEXT_FILL_COLOR = (255, 221, 0, 255)     # yellow, matches reference title cards
 TEXT_OUTLINE_COLOR = (0, 0, 0, 255)      # black outline
 
 ENABLE_LABEL_CARDS = True    # big on-screen text per beat (e.g. "AQUA DOTS") - confirmed from reference
+LABEL_VISIBLE_SECONDS = 2.0  # label fades out after this long, even if the segment's
+                              # sentence keeps going — captions take over for the rest
+                              # (see main.py). Without this, a segment with a long
+                              # sentence (name + detail in one breath) sits static under
+                              # the label for several seconds with zero movement.
 ENABLE_WORD_CAPTIONS = True  # word-by-word spoken captions - CONFIRMED, cycles through CAPTION_COLOR_CYCLE
 CAPTION_COLOR_CYCLE = [(255, 255, 255), (255, 221, 0), (0, 229, 255)]  # white, yellow, aqua - confirmed pattern
 ENABLE_RANK_BADGES = False   # circular "#3/#2/#1" badge - NOT seen in the reference video, off by default
