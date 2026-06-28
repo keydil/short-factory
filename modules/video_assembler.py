@@ -5,6 +5,7 @@ video, overlays label cards / rank badges / watermark, mixes in SFX, then
 reliable for styled/animated captions than rendering them purely inside moviepy).
 """
 import os
+import random
 import subprocess
 from PIL import Image as PILImage
 if not hasattr(PILImage, "ANTIALIAS"):
@@ -24,8 +25,21 @@ def _clip_for_segment(visual: dict, duration: float):
         clip = VideoFileClip(visual["path"])
         clip = clip.subclip(0, min(duration, clip.duration))
     else:
-        # Ken Burns style slow zoom on static images - the classic "fake camera move"
-        clip = ImageClip(visual["path"]).set_duration(duration).resize(lambda t: 1 + 0.04 * t)
+        # Ken Burns pan/zoom - varied per image (direction + speed randomized) so
+        # every single photo doesn't move identically. Uniform motion across every
+        # shot is one of the most obvious automated-content "tells" — real editors
+        # never zoom every clip at the exact same rate.
+        zoom_style = random.choice(["in", "in", "out", "still"])  # weighted toward "in"
+        zoom_rate = random.uniform(0.025, 0.05)
+
+        if zoom_style == "in":
+            resize_fn = lambda t: 1 + zoom_rate * t
+        elif zoom_style == "out":
+            resize_fn = lambda t: 1 + zoom_rate * duration - zoom_rate * t
+        else:
+            resize_fn = lambda t: 1.02  # tiny constant zoom, avoids a dead-static frame
+
+        clip = ImageClip(visual["path"]).set_duration(duration).resize(resize_fn)
 
     clip = clip.resize(height=config.VIDEO_HEIGHT)
     if clip.w < config.VIDEO_WIDTH:

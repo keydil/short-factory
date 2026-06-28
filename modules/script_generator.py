@@ -25,8 +25,10 @@ Write ONE short video script in {language_name}. Requirements:
 - End with a short, natural call-to-action to follow/subscribe for more.
 - Split the narration into short segments (1 sentence each) for pacing.
 - For each segment, give 2-3 KEYWORDS (in English, even if the script itself is in
-  another language) describing stock footage or a photo that would visually match it.
-  Keep keywords concrete and searchable (e.g. "deep ocean trench", not "mystery").
+  another language) describing a SPECIFIC visual moment or action that matches it —
+  not an abstract concept. E.g. "hands assembling colorful beads" beats just "toy";
+  "police evidence bag closeup" beats just "danger". Specific keywords pull footage
+  that actually illustrates the claim instead of generic filler.
 - For each segment also give a "rank" field. {rank_instruction}
 - For each segment also give a "label" field — a short (1-4 word) ALL-CAPS-friendly
   on-screen text overlay for that beat: for the hook/intro segment, a punchy short

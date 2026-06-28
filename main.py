@@ -22,23 +22,15 @@ def run(topic_hint: str = None):
     script = script_generator.generate_script(topic_hint)
     print(f"     Title: {script['title']}")
 
-    full_text = " ".join(seg["text"] for seg in script["segments"])
-
-    print("2/5  Generating voiceover...")
-    voice_path = os.path.join(config.TEMP_DIR, "voice.mp3")
-    word_timings = voice_generator.generate_voice(full_text, voice_path)
+    print("2/5  Generating voiceover (per-segment pacing + natural pauses)...")
+    voice_dir = os.path.join(config.TEMP_DIR, "voice_segments")
+    voice_path, word_timings, segment_durations = voice_generator.generate_voice_for_script(
+        script["segments"], voice_dir
+    )
 
     print("3/5  Fetching visuals for each segment...")
-    segment_durations = []
     visuals = []
-    word_cursor = 0
     for i, seg in enumerate(script["segments"]):
-        n_words = len(seg["text"].split())
-        seg_words = word_timings[word_cursor:word_cursor + n_words]
-        word_cursor += n_words
-        duration = (seg_words[-1]["end"] - seg_words[0]["start"]) if seg_words else 3.0
-        segment_durations.append(max(duration, 1.5))
-
         visual = visual_fetcher.fetch_visual_for_segment(
             seg["visual_keywords"], os.path.join(config.TEMP_DIR, "visuals"), i
         )
